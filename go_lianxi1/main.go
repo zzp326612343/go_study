@@ -9,21 +9,23 @@ import (
 	"math/big"
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	token "github.com/zzp326612343/go_study/go_lianxi1/token"
 	"golang.org/x/crypto/sha3"
 )
 
 func main() {
-	client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/3uyYJlPtrNVbiZnhihQCE3rDbbXYJaUV")
-	if err != nil {
-		log.Fatal(err)
-	}
-	queryBlockBalance(client)
+	// client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/3uyYJlPtrNVbiZnhihQCE3rDbbXYJaUV")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	sub()
 }
 
 func queryBlock(client *ethclient.Client) {
@@ -196,4 +198,69 @@ func queryBlockBalance(client *ethclient.Client) {
 	fbalance.SetString(balance.String())
 	ebalance := new(big.Float).Quo(fbalance, big.NewFloat(math.Pow10(18)))
 	fmt.Println(ebalance)
+}
+
+func queryERC20(client *ethclient.Client) {
+	// Golem (GNT) Address
+	tokenAddress := common.HexToAddress("xD6F83199feD6855Ee48585A4FA441aF08422897c")
+	instance, err := token.NewToken(tokenAddress, client)
+	if err != nil {
+		log.Fatal(err)
+	}
+	address := common.HexToAddress("0xd19a554FeEa3d76F91bb98390fE37975a58337f1")
+	bal, err := instance.BalanceOf(&bind.CallOpts{}, address)
+	if err != nil {
+		log.Fatal(err)
+	}
+	name, err := instance.Name(&bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	symbol, err := instance.Symbol(&bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	decimals, err := instance.Decimals(&bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("name: %s\n", name)         // "name: Golem Network"
+	fmt.Printf("symbol: %s\n", symbol)     // "symbol: GNT"
+	fmt.Printf("decimals: %v\n", decimals) // "decimals: 18"
+	fmt.Printf("wei: %s\n", bal)           // "wei: 74605500647408739782407023"
+	fbal := new(big.Float)
+	fbal.SetString(bal.String())
+	value := new(big.Float).Quo(fbal, big.NewFloat(math.Pow10(int(decimals))))
+	fmt.Printf("balance: %f", value) // "balance: 74605500.647409"
+}
+
+func sub() {
+	client, err := ethclient.Dial("wss://eth-sepolia.g.alchemy.com/v2/3uyYJlPtrNVbiZnhihQCE3rDbbXYJaUV")
+	if err != nil {
+		log.Fatal(err)
+	}
+	headers := make(chan *types.Header)
+	sub, err := client.SubscribeNewHead(context.Background(), headers)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+		case header := <-headers:
+			fmt.Println(header.Hash().Hex()) // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+			block, err := client.BlockByHash(context.Background(), header.Hash())
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println(block.Hash().Hex())        // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+			fmt.Println(block.Number().Uint64())   // 3477413
+			fmt.Println(block.Time())              // 1529525947
+			fmt.Println(block.Nonce())             // 130524141876765836
+			fmt.Println(len(block.Transactions())) // 7
+		}
+	}
 }
