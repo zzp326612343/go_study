@@ -21,11 +21,11 @@ import (
 )
 
 func main() {
-	// client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/3uyYJlPtrNVbiZnhihQCE3rDbbXYJaUV")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	sub()
+	client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/3uyYJlPtrNVbiZnhihQCE3rDbbXYJaUV")
+	if err != nil {
+		log.Fatal(err)
+	}
+	queryERC20(client)
 }
 
 func queryBlock(client *ethclient.Client) {
@@ -202,7 +202,7 @@ func queryBlockBalance(client *ethclient.Client) {
 
 func queryERC20(client *ethclient.Client) {
 	// Golem (GNT) Address
-	tokenAddress := common.HexToAddress("xD6F83199feD6855Ee48585A4FA441aF08422897c")
+	tokenAddress := common.HexToAddress("0xD6F83199feD6855Ee48585A4FA441aF08422897c")
 	instance, err := token.NewToken(tokenAddress, client)
 	if err != nil {
 		log.Fatal(err)
