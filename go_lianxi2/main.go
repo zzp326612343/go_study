@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -127,4 +130,43 @@ func main1() {
 		log.Fatal(err)
 	}
 	fmt.Println("is value saving in contract equals to origin value:", valueInContract == value)
+}
+
+var StoreABI = `[{"inputs":[{"internalType":"string","name":"_version","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes32","name":"key","type":"bytes32"},{"indexed":false,"internalType":"bytes32","name":"value","type":"bytes32"}],"name":"ItemSet","type":"event"},{"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"items","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"key","type":"bytes32"},{"internalType":"bytes32","name":"value","type":"bytes32"}],"name":"setItem","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"version","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"}]`
+
+func main2() {
+	client, err := ethclient.Dial("https://mainnet.infura.io/v3/<your-infura-key>")
+	if err != nil {
+		log.Fatal(err)
+	}
+	contractAddress := common.HexToAddress("0x<contract-address>")
+	query := ethereum.FilterQuery{
+		FromBlock: big.NewInt(8755232),
+		Addresses: []common.Address{contractAddress},
+	}
+	logs, err := client.FilterLogs(context.Background(), query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	contractAbi, err := abi.JSON(strings.NewReader(StoreABI))
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, vLog := range logs {
+		event := struct {
+			Key   [32]byte
+			Value [32]byte
+		}{}
+		err := contractAbi.UnpackIntoInterface(&event, "ItemSet", vLog.Data)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Value:", event.Value)
+		var topics []string
+		for i := range vLog.Topics {
+			topics = append(topics, vLog.Topics[i].Hex())
+		}
+		fmt.Println("Topics:", topics)
+
+	}
 }
